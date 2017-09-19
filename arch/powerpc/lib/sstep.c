@@ -722,9 +722,9 @@ NOKPROBE_SYMBOL(emulate_vsx_store);
 		: "r" (addr), "i" (-EFAULT), "0" (err))
 
 static nokprobe_inline void set_cr0(const struct pt_regs *regs,
-				    struct instruction_op *op, int rd)
+				    struct instruction_op *op)
 {
-	long val = regs->gpr[rd];
+	long val = op->val;
 
 	op->type |= SETCC;
 	op->ccval = (regs->ccr & 0x0fffffff) | ((regs->xer >> 3) & 0x10000000);
@@ -1107,7 +1107,7 @@ int analyse_instr(struct instruction_op *op, const struct pt_regs *regs,
 	case 13:	/* addic. */
 		imm = (short) instr;
 		add_with_carry(regs, op, rd, regs->gpr[ra], imm, 0);
-		set_cr0(regs, op, rd);
+		set_cr0(regs, op);
 		return 1;
 
 	case 14:	/* addi */
@@ -1167,13 +1167,13 @@ int analyse_instr(struct instruction_op *op, const struct pt_regs *regs,
 
 	case 28:	/* andi. */
 		op->val = regs->gpr[rd] & (unsigned short) instr;
-		set_cr0(regs, op, ra);
+		set_cr0(regs, op);
 		goto logical_done_nocc;
 
 	case 29:	/* andis. */
 		imm = (unsigned short) instr;
 		op->val = regs->gpr[rd] & (imm << 16);
-		set_cr0(regs, op, ra);
+		set_cr0(regs, op);
 		goto logical_done_nocc;
 
 #ifdef __powerpc64__
@@ -2228,7 +2228,7 @@ int analyse_instr(struct instruction_op *op, const struct pt_regs *regs,
 
  logical_done:
 	if (instr & 1)
-		set_cr0(regs, op, ra);
+		set_cr0(regs, op);
  logical_done_nocc:
 	op->reg = ra;
 	op->type |= SETREG;
@@ -2236,7 +2236,7 @@ int analyse_instr(struct instruction_op *op, const struct pt_regs *regs,
 
  arith_done:
 	if (instr & 1)
-		set_cr0(regs, op, rd);
+		set_cr0(regs, op);
  compute_done:
 	op->reg = rd;
 	op->type |= SETREG;
